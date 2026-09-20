@@ -216,7 +216,7 @@
 
   <div class="modal" id="help" hidden>
     <div class="modalcard">
-      <button class="modalx" id="helpx" aria-label="Close">\u00d7</button>
+      <button class="modalx" id="helpx" aria-label="Close">×</button>
       <h3>How to use AI Agent Reviewer</h3>
       <ol>
         <li><strong>Add the manuscript.</strong> Paste text on the left, or upload a PDF / Word / TXT file.</li>
@@ -242,7 +242,7 @@ if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.clo
 const API_URL="https://api.anthropic.com/v1/messages";
 const MODEL="claude-sonnet-4-6";
 // ---- PUBLIC PROXY: paste your Cloudflare Worker URL between the quotes to power the public site with the shared key. Leave "" to use inside Claude / bring-your-own-key. ----
-const PROXY_URL="";
+const PROXY_URL="https://reviewer-proxy.madhubioinform.workers.dev";
 const PROXY_MODEL="claude-sonnet-5";
 const CAP=24000;               // manuscript chars sent as context each turn
 const HIST=14;                 // conversation turns kept in context
