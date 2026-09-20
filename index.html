@@ -241,6 +241,9 @@ if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.clo
 
 const API_URL="https://api.anthropic.com/v1/messages";
 const MODEL="claude-sonnet-4-6";
+// ---- PUBLIC PROXY: paste your Cloudflare Worker URL between the quotes to power the public site with the shared key. Leave "" to use inside Claude / bring-your-own-key. ----
+const PROXY_URL="";
+const PROXY_MODEL="claude-sonnet-5";
 const CAP=24000;               // manuscript chars sent as context each turn
 const HIST=14;                 // conversation turns kept in context
 const MCP=[{type:"url",url:"https://pubmed.mcp.claude.com/mcp",name:"pubmed"},{type:"url",url:"https://hcls.mcp.claude.com/biorxiv/mcp",name:"biorxiv"}];
@@ -288,11 +291,12 @@ async function readDocx(f){if(!window.mammoth)throw 0;const b=await f.arrayBuffe
 
 // ---------- API ----------
 async function callClaude(body){
-  const keyEl=$("apikey"),key=keyEl?keyEl.value.trim():"";
-  const usingKey=key.length>10;
-  const headers=usingKey?{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}:{"Content-Type":"application/json"};
-  const model=usingKey?($("model")?$("model").value:"claude-sonnet-5"):MODEL;
-  const req=fetch(API_URL,{method:"POST",headers,body:JSON.stringify({model,max_tokens:8000,...body})});
+  let url,headers,model;
+  if(PROXY_URL){ url=PROXY_URL; headers={"Content-Type":"application/json"}; model=PROXY_MODEL; }
+  else { const keyEl=$("apikey"),key=keyEl?keyEl.value.trim():""; const usingKey=key.length>10;
+    url=API_URL; headers=usingKey?{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}:{"Content-Type":"application/json"};
+    model=usingKey?($("model")?$("model").value:"claude-sonnet-5"):MODEL; }
+  const req=fetch(url,{method:"POST",headers,body:JSON.stringify({model,max_tokens:8000,...body})});
   const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("__timeout__")),90000));
   let res;
   try{res=await Promise.race([req,timeout]);}
@@ -459,6 +463,7 @@ document.querySelectorAll(".dt").forEach(b=>b.onclick=()=>{docType=b.dataset.d;
   if($("journal"))$("journal").value="";
   renderVenue();renderChat(false);});
 renderVenue();
+if(PROXY_URL){var _st=document.querySelector(".settings");if(_st)_st.style.display="none";var _pt=document.querySelector(".pmtoggle");if(_pt)_pt.style.display="none";var _pm=$("usepubmed");if(_pm)_pm.checked=false;}
 renderChat(false);
 onChange();
 </script>
