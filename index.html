@@ -158,7 +158,7 @@
           <div class="field"><label for="apikey">Anthropic API key (optional)</label><input type="password" id="apikey" placeholder="sk-ant-… (leave blank inside Claude)" autocomplete="off" /></div>
           <div class="field"><label for="model">Model (used with your key)</label><select id="model"><option value="claude-sonnet-5">Claude Sonnet 5</option><option value="claude-opus-4-8">Claude Opus 4.8</option><option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option></select></div>
         </div>
-        <p class="hint">Leave blank when running inside Claude — it uses your session automatically. Add your own key (from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>) to run this on a public website or to share it. Your key is stored only in your browser.</p>
+        <p class="hint">Leave blank to use the lab's shared credit. Or add your own Anthropic key (from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>) to run it on your own account instead — your key is stored only in your browser.</p>
       </div>
     </details>
   </div>
@@ -291,11 +291,11 @@ async function readDocx(f){if(!window.mammoth)throw 0;const b=await f.arrayBuffe
 
 // ---------- API ----------
 async function callClaude(body){
+  const keyEl=$("apikey"),key=keyEl?keyEl.value.trim():""; const usingKey=key.length>10;
   let url,headers,model;
-  if(PROXY_URL){ url=PROXY_URL; headers={"Content-Type":"application/json"}; model=PROXY_MODEL; }
-  else { const keyEl=$("apikey"),key=keyEl?keyEl.value.trim():""; const usingKey=key.length>10;
-    url=API_URL; headers=usingKey?{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}:{"Content-Type":"application/json"};
-    model=usingKey?($("model")?$("model").value:"claude-sonnet-5"):MODEL; }
+  if(usingKey){ url=API_URL; headers={"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}; model=($("model")?$("model").value:"claude-sonnet-5"); }
+  else if(PROXY_URL){ url=PROXY_URL; headers={"Content-Type":"application/json"}; model=PROXY_MODEL; }
+  else { url=API_URL; headers={"Content-Type":"application/json"}; model=MODEL; }
   const req=fetch(url,{method:"POST",headers,body:JSON.stringify({model,max_tokens:8000,...body})});
   const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("__timeout__")),90000));
   let res;
@@ -440,7 +440,7 @@ $("clear").addEventListener("click",()=>{history=[];renderChat(false);});
 (function(){const keyEl=$("apikey"),modelEl=$("model"),dot=$("keydot"),label=$("keylabel");
   try{keyEl.value=localStorage.getItem("r2_key")||"";}catch(_){}
   try{const mm=localStorage.getItem("r2_model");if(mm&&modelEl)modelEl.value=mm;}catch(_){}
-  function refl(){const has=keyEl.value.trim().length>10;dot.classList.toggle("on",has);label.textContent=has?"Using your API key (works on public sites too)":"Running on Claude (no key needed) — click to add a key for public use";}
+  function refl(){const has=keyEl.value.trim().length>10;dot.classList.toggle("on",has);label.textContent=has?"Using your own API key":(PROXY_URL?"Using the lab's shared credit — click to add your own API key instead":"Running on Claude (no key needed) — click to add a key for public use");}
   keyEl.addEventListener("input",()=>{try{localStorage.setItem("r2_key",keyEl.value.trim());}catch(_){}refl();});
   if(modelEl)modelEl.addEventListener("change",()=>{try{localStorage.setItem("r2_model",modelEl.value);}catch(_){}});
   refl();})();
@@ -463,7 +463,7 @@ document.querySelectorAll(".dt").forEach(b=>b.onclick=()=>{docType=b.dataset.d;
   if($("journal"))$("journal").value="";
   renderVenue();renderChat(false);});
 renderVenue();
-if(PROXY_URL){var _st=document.querySelector(".settings");if(_st)_st.style.display="none";var _pt=document.querySelector(".pmtoggle");if(_pt)_pt.style.display="none";var _pm=$("usepubmed");if(_pm)_pm.checked=false;}
+if(PROXY_URL){var _pt=document.querySelector(".pmtoggle");if(_pt)_pt.style.display="none";var _pm=$("usepubmed");if(_pm)_pm.checked=false;}
 renderChat(false);
 onChange();
 </script>
