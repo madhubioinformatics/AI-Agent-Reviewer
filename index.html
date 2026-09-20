@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AI Agent Reviewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#14213d; --ink-soft:#46506b; --paper:#faf6ea; --card:#fff; --line:#e4e3dd;
+    --accent:#2c8c99; --accent-wash:#2c8c9915;
+    --purple:#6c5ce7; --teal:#2fbfa0; --coral:#ff6b6b; --yellow:#ffd24c;
+    --radius:14px; --shadow:0 1px 2px rgba(20,33,61,.06),0 8px 24px rgba(20,33,61,.06);
+    --sans:'Inter',system-ui,-apple-system,sans-serif; --serif:'Newsreader',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.5;font-size:16px}
+  a{color:var(--accent)}
+  .wrap{max-width:1180px;margin:0 auto;padding:30px 22px 40px}
+  .eyebrow{display:inline-block;background:var(--ink);color:#f2c14e;font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;padding:8px 15px;border-radius:999px;margin-bottom:14px}
+  header.mast{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px 24px;padding-bottom:18px;border-bottom:1.5px solid var(--ink)}
+  .mark{font-family:var(--serif);font-size:clamp(32px,6vw,48px);font-weight:600;letter-spacing:-.02em;line-height:1}
+  .mark em{font-style:italic;color:var(--accent);transition:color .35s ease}
+  .tag{font-family:var(--serif);font-style:italic;color:var(--ink-soft);font-size:clamp(14px,2.2vw,18px);max-width:44ch}
+
+  .settings{margin:16px 0 0}
+  details.keybox{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  details.keybox>summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:500;font-size:14px;display:flex;align-items:center;gap:10px}
+  details.keybox>summary::-webkit-details-marker{display:none}
+  .dot{width:8px;height:8px;border-radius:50%;background:#cbccc4;flex:none}
+  .dot.on{background:#37a06b}
+  .keybody{padding:4px 16px 18px;display:grid;gap:12px}
+  .field label{display:block;font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:5px}
+  input[type=password],#model{width:100%;font-family:var(--sans);font-size:15px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .row2{display:grid;grid-template-columns:1fr 220px;gap:12px}
+  .hint{font-size:12.5px;color:var(--ink-soft)}
+
+  .grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:20px;align-items:start;margin-top:20px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .pad{padding:18px}
+  h2{font-family:var(--serif);font-weight:600;font-size:19px;margin:0 0 12px}
+
+  textarea{width:100%;font-family:var(--sans);font-size:14.5px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:11px 12px}
+  textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  textarea#ms{min-height:190px;resize:vertical;line-height:1.5}
+  .uploadrow{display:flex;gap:10px;align-items:center;margin:12px 0 4px;flex-wrap:wrap}
+  .filebtn{border:1px dashed var(--line);background:var(--paper);color:var(--ink-soft);border-radius:9px;padding:9px 13px;font-size:13px;cursor:pointer;font-family:var(--sans)}
+  .filebtn:hover{border-color:var(--accent);color:var(--accent)}
+  .status,.count{font-size:12.5px;color:var(--ink-soft)}
+  .examples{display:flex;align-items:center;gap:10px;margin:12px 0 16px;font-size:13px;color:var(--ink-soft);flex-wrap:wrap}
+  .examples select{width:auto;padding:7px 10px;font-size:13px;font-family:var(--sans);color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:9px}
+
+  .dial-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .dial-name{font-family:var(--serif);font-size:20px;font-weight:600;color:var(--accent);transition:color .35s ease}
+  .dial-sub{font-size:12.5px;color:var(--ink-soft)}
+  input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:6px;background:linear-gradient(90deg,#2c8c99,#4e9e6b,#e6a400,#e8712b,#ce2e28);margin:12px 0 4px}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--accent);box-shadow:var(--shadow);cursor:pointer;transition:border-color .35s ease}
+  input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid var(--accent);cursor:pointer}
+  .ticks{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ink-soft);margin-top:2px}
+  .jrow{margin:16px 0 4px}
+  .jrow label{display:block;font-size:13px;font-weight:500;color:var(--ink-soft);margin-bottom:6px}
+  input[type=text]#journal{width:100%;font-family:var(--sans);font-size:14.5px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  input[type=text]#journal:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
+  .jchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .jchip{font-size:11.5px;padding:5px 9px}
+
+  /* chat */
+  .chatpanel{display:flex;flex-direction:column;height:74vh;min-height:460px}
+  .chathead{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line)}
+  .chathead h2{margin:0}
+  .clearbtn{background:transparent;border:1px solid var(--line);color:var(--ink-soft);font-family:var(--sans);font-size:12.5px;padding:6px 11px;border-radius:8px;cursor:pointer}
+  .clearbtn:hover{border-color:var(--accent);color:var(--accent)}
+  #chat{flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
+  .bubble{max-width:94%;padding:13px 16px;border-radius:14px;font-size:15px}
+  .bubble.user{align-self:flex-end;background:var(--accent-wash);border:1px solid var(--accent);border-bottom-right-radius:4px;white-space:pre-wrap}
+  .bubble.asst{align-self:flex-start;background:var(--paper);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .bubble.asst.err{background:#fdeceb;border-color:#f3b8b3;color:#a3271f}
+  .bubble.asst .review{font-family:var(--serif);font-size:16.5px;line-height:1.6}
+  .review h3{font-family:var(--sans);font-size:12px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:20px 0 7px}
+  .review h3:first-child{margin-top:0}
+  .review h4{font-size:17px;margin:14px 0 5px;font-weight:600}
+  .review p{margin:0 0 11px} .review p:last-child{margin-bottom:0}
+  .review ul,.review ol{margin:0 0 12px;padding-left:22px} .review li{margin-bottom:6px}
+  .review strong{font-weight:600}
+  .loading{display:flex;align-items:center;gap:10px;color:var(--ink-soft);font-size:14px}
+  .spin{width:14px;height:14px;border:2px solid var(--accent);border-top-color:transparent;border-radius:50%;animation:sp .7s linear infinite}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  .empty{padding:20px 6px}
+  .starters{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chip{cursor:pointer;background:transparent;border:1px solid var(--line);color:var(--ink);font-family:var(--sans);font-size:13px;padding:8px 13px;border-radius:999px}
+  .chip:hover{border-color:var(--accent);color:var(--accent)}
+
+  .pmtoggle{display:flex;align-items:center;gap:8px;padding:10px 16px 0;font-size:13px;color:var(--ink-soft);cursor:pointer}
+  .pmtoggle input{accent-color:var(--accent);width:15px;height:15px}
+  .pmtoggle .hint{font-size:12px}
+  .inputrow{display:flex;gap:10px;padding:14px 16px;border-top:1px solid var(--line);align-items:flex-end}
+  #msg{min-height:46px;max-height:160px;resize:none;flex:1}
+  .send{border:none;cursor:pointer;background:var(--accent);color:#fff;font-family:var(--sans);font-weight:600;font-size:15px;padding:12px 20px;border-radius:10px;transition:filter .2s,opacity .2s}
+  .send:hover{filter:brightness(1.05)} .send:disabled{opacity:.45;cursor:default}
+
+  footer{margin-top:22px;font-size:12.5px;color:var(--ink-soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  @media (max-width:860px){.grid{grid-template-columns:1fr}.chatpanel{height:70vh}.row2{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+  body{overflow-x:hidden}
+  .wrap{position:relative;z-index:1}
+  .blob{position:absolute;border-radius:50%;pointer-events:none;z-index:0}
+  .mark .w1{color:var(--purple)} .mark .w2{color:var(--teal)} .mark .w3{color:var(--coral)}
+  .starters .chip:nth-child(1){border-color:var(--purple);color:#5a4bd0}
+  .starters .chip:nth-child(2){border-color:var(--teal);color:#1f8f76}
+  .starters .chip:nth-child(3){border-color:var(--coral);color:#d24a4a}
+  .starters .chip:nth-child(4){border-color:#e0aa1e;color:#9a7500}
+  .starters .chip:nth-child(5){border-color:var(--purple);color:#5a4bd0}
+  .msgtools{display:flex;gap:7px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}
+  .dl{background:transparent;border:1px solid var(--line);color:var(--ink-soft);font-family:var(--sans);font-size:12px;font-weight:600;padding:5px 11px;border-radius:8px;cursor:pointer}
+  .dl:hover{border-color:var(--accent);color:var(--accent)}
+  .empty{padding:18px 6px}
+  .howto{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+  .howto-h,.stlab{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:8px}
+  .howto ol{margin:0;padding-left:20px;font-size:14px} .howto li{margin-bottom:5px}
+  .stgroup{margin-bottom:14px}
+  .starters.funny .chip{border-color:var(--coral);color:#c94b4b}
+  .starters.funny .chip:hover{background:#ff6b6b18}
+  .modal{position:fixed;inset:0;background:rgba(20,33,61,.45);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+  .modal[hidden]{display:none}
+  .modalcard{background:var(--card);border-radius:16px;max-width:520px;width:100%;padding:24px 26px 22px;box-shadow:var(--shadow);position:relative;max-height:85vh;overflow:auto}
+  .modalcard h3{font-family:var(--serif);font-size:22px;margin:0 0 12px}
+  .modalcard ol{padding-left:20px;margin:0} .modalcard li{margin-bottom:8px;font-size:14.5px}
+  .modalcard .tip{font-size:13px;color:var(--ink-soft);margin-top:14px}
+  .modalx{position:absolute;top:10px;right:14px;border:none;background:transparent;font-size:26px;line-height:1;color:var(--ink-soft);cursor:pointer}
+  .doctype{display:inline-flex;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:3px;margin-bottom:14px;gap:2px}
+  .dt{border:none;background:transparent;font-family:var(--sans);font-size:13px;font-weight:600;color:var(--ink-soft);padding:7px 14px;border-radius:8px;cursor:pointer}
+  .dt.active{background:var(--accent);color:#fff}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="blob" style="width:230px;height:230px;background:var(--yellow);opacity:.5;top:-70px;right:-50px"></div>
+  <div class="blob" style="width:170px;height:170px;background:var(--coral);opacity:.30;top:20px;right:120px"></div>
+  <div class="blob" style="width:130px;height:130px;background:var(--purple);opacity:.26;top:-24px;right:235px"></div>
+  <div class="blob" style="width:90px;height:90px;background:var(--teal);opacity:.28;top:150px;right:-20px"></div>
+  <div class="eyebrow">Swarup Lab · UCI MIND · ZotCraft 2026</div>
+  <header class="mast">
+    <div class="mark"><span class="w1">AI</span> <span class="w2">Agent</span> <span class="w3">Reviewer</span></div>
+    <p class="tag">A conversational peer reviewer for any manuscript — set how much it'll hurt, pick a target journal, and just talk. It checks the literature and remembers the whole review.</p>
+  </header>
+
+  <div class="settings">
+    <details class="keybox" id="keybox">
+      <summary><span class="dot" id="keydot"></span><span id="keylabel">Running on Claude (no key needed) — click to add a key for public use</span></summary>
+      <div class="keybody">
+        <div class="row2">
+          <div class="field"><label for="apikey">Anthropic API key (optional)</label><input type="password" id="apikey" placeholder="sk-ant-… (leave blank inside Claude)" autocomplete="off" /></div>
+          <div class="field"><label for="model">Model (used with your key)</label><select id="model"><option value="claude-sonnet-5">Claude Sonnet 5</option><option value="claude-opus-4-8">Claude Opus 4.8</option><option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option></select></div>
+        </div>
+        <p class="hint">Leave blank when running inside Claude — it uses your session automatically. Add your own key (from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>) to run this on a public website or to share it. Your key is stored only in your browser.</p>
+      </div>
+    </details>
+  </div>
+
+  <div class="grid">
+    <!-- MANUSCRIPT -->
+    <section class="panel"><div class="pad">
+      <div class="doctype" id="doctype"><button class="dt active" data-d="manuscript">Manuscript</button><button class="dt" data-d="grant">Grant proposal</button></div>
+      <h2 id="msTitle">The manuscript</h2>
+      <textarea id="ms" placeholder="Paste the abstract, a section, or the full text here…"></textarea>
+      <div class="uploadrow">
+        <button class="filebtn" id="filebtn">Upload .pdf · .docx · .txt</button>
+        <input type="file" id="file" accept=".pdf,.docx,.txt" style="display:none" />
+        <span class="status" id="status"></span>
+      </div>
+      <div class="examples">
+        <span>No draft handy?</span>
+        <select id="example">
+          <option value="">Load an example…</option>
+          <option value="neuro">Neuro / single-cell abstract</option>
+          <option value="overclaim">An abstract that overclaims</option>
+        </select>
+      </div>
+      <div class="dial-head">
+        <span class="dial-name" id="dialName">Standard reviewer</span>
+        <span class="dial-sub" id="dialSub">Neutral, by the book</span>
+      </div>
+      <input type="range" id="dial" min="1" max="5" step="1" value="3" />
+      <div class="ticks"><span>Kind</span><span>Gentle</span><span>Standard</span><span>Tough</span><span>From hell</span></div>
+      <div class="jrow">
+        <label id="venueLabel" for="journal">Target journal (optional)</label>
+        <input type="text" id="journal" placeholder="e.g. Nature Neuroscience, Bioinformatics, PLOS ONE" />
+        <div class="jchips" id="jchips">
+          <button class="chip jchip" data-j="a high-impact general-science journal at the Nature / Science / Cell tier, where novelty and broad significance are decisive">High-impact</button>
+          <button class="chip jchip" data-j="a strong specialist journal in this field, where technical rigor and a solid advance matter more than broad reach">Specialist</button>
+          <button class="chip jchip" data-j="a methods / bioinformatics journal (e.g. Bioinformatics, Genome Biology), where reproducibility, benchmarking and code/data availability are decisive">Methods</button>
+          <button class="chip jchip" data-j="a clinical journal (e.g. JAMA, The Lancet) with strict reporting standards and emphasis on clinical relevance and statistics">Clinical</button>
+          <button class="chip jchip" data-j="a soundness-only megajournal (e.g. PLOS ONE, Scientific Reports) that judges technical validity and rigor, NOT novelty or impact">Megajournal</button>
+        </div>
+      </div>
+      <div class="count" id="count" style="margin-top:12px">0 words — add a document to begin</div>
+    </div></section>
+
+    <!-- CHAT -->
+    <section class="panel chatpanel">
+      <div class="chathead"><h2>The review</h2><div style="display:flex;gap:8px"><button class="clearbtn" id="helpbtn">How to use</button><button class="clearbtn" id="clear">New review</button></div></div>
+      <div id="chat"></div>
+      <label class="pmtoggle"><input type="checkbox" id="usepubmed" checked /> Look up PubMed &amp; bioRxiv <span class="hint">— uses your connectors; works inside Claude</span></label>
+      <div class="inputrow">
+        <textarea id="msg" placeholder="Ask Reviewer #2 anything… (Enter to send, Shift+Enter for a new line)"></textarea>
+        <button class="send" id="send" disabled>Send</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal" id="help" hidden>
+    <div class="modalcard">
+      <button class="modalx" id="helpx" aria-label="Close">\u00d7</button>
+      <h3>How to use AI Agent Reviewer</h3>
+      <ol>
+        <li><strong>Add the manuscript.</strong> Paste text on the left, or upload a PDF / Word / TXT file.</li>
+        <li><strong>Set the tone.</strong> The dial runs from Kind mentor to Reviewer #2 from hell — the interface heats up as you raise it.</li>
+        <li><strong>Pick a target journal (optional).</strong> It recalibrates the bar: a "major revision" for a specialist journal can be a "reject" for a flagship.</li>
+        <li><strong>Just talk.</strong> Ask for a full review, the top fixes, a decision letter — anything. It remembers the conversation, so follow up ("now be harsher", "expand point 3").</li>
+        <li><strong>Look up the literature (optional).</strong> With PubMed / bioRxiv on, give it a PMID / DOI / title to fetch and review, or ask it to check your claims.</li>
+        <li><strong>Export.</strong> Use the PDF / Word / Copy buttons under any reply, or type "download as PDF and Word".</li>
+      </ol>
+      <p class="tip">Grounded in the text you give it — it won't invent references. Reviews are assistive, not a substitute for real peer review.</p>
+    </div>
+  </div>
+
+  <footer>
+    <span>Built with Claude for ZotCraft 2026 · Swarup Lab, UCI MIND · reviews any manuscript (not lab data) · assistive, not a substitute for peer review</span>
+    <span>Open-source, properly licensed: Google Fonts (OFL) · pdf.js (Apache-2.0) · mammoth (BSD-2) · powered by Claude</span>
+  </footer>
+</div>
+
+<script>
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+const API_URL="https://api.anthropic.com/v1/messages";
+const MODEL="claude-sonnet-4-6";
+const CAP=24000;               // manuscript chars sent as context each turn
+const HIST=14;                 // conversation turns kept in context
+const MCP=[{type:"url",url:"https://pubmed.mcp.claude.com/mcp",name:"pubmed"},{type:"url",url:"https://hcls.mcp.claude.com/biorxiv/mcp",name:"biorxiv"}];
+
+const PERSONAS={
+  1:{name:"Kind mentor",sub:"Warm, encouraging",accent:"#2c8c99",voice:"You are a warm, encouraging senior mentor reviewing a colleague's work. Lead with what works and frame criticism as supportive, actionable guidance. Kind but honest."},
+  2:{name:"Gentle reviewer",sub:"Supportive but candid",accent:"#4e9e6b",voice:"You are a supportive but candid peer reviewer. Balance praise with clear, constructive criticism. Diplomatic and specific."},
+  3:{name:"Standard reviewer",sub:"Neutral, by the book",accent:"#e6a400",voice:"You are a neutral, professional peer reviewer for a solid field journal. Even-handed, rigorous, neither harsh nor soft."},
+  4:{name:"Tough reviewer",sub:"Skeptical, high bar",accent:"#e8712b",voice:"You are a demanding, skeptical reviewer at a top journal. Hold the work to a very high bar and probe assumptions hard, but remain fair and professional."},
+  5:{name:"Reviewer #2 from hell",sub:"Scathing, exacting",accent:"#ce2e28",voice:"You are the legendary 'Reviewer 2': scathing, exacting, and merciless about every overclaim, missing control, and unsupported statement. Dry wit is welcome — but you remain a real scientist: every criticism points to a genuine issue in the text, and you never invent flaws or references."}
+};
+const EXAMPLES={
+  neuro:"We performed single-nucleus RNA sequencing on postmortem prefrontal cortex from 6 Alzheimer's disease patients and 6 controls, recovering 48,000 nuclei. Unsupervised clustering identified a disease-associated microglial state enriched in AD samples. Pseudotime analysis suggested a trajectory from homeostatic to disease-associated microglia. We conclude that microglial state transitions drive Alzheimer's disease progression and represent a promising therapeutic target.",
+  overclaim:"Our novel deep-learning model predicts drug response from gene expression with unprecedented accuracy. Trained on 200 cell lines, the model achieved 92% accuracy on a held-out set. These results prove that our method will revolutionize personalized cancer treatment and can be immediately deployed in the clinic. No existing approach comes close."
+};
+
+const $=id=>document.getElementById(id);
+const msEl=$("ms"),dial=$("dial"),dialName=$("dialName"),dialSub=$("dialSub"),countEl=$("count");
+const chat=$("chat"),msg=$("msg"),sendBtn=$("send");
+let manuscript="",level=3,busy=false;
+let history=[];   // {role:'user'|'assistant', content, error?}
+
+// ---------- dial ----------
+function setDial(){const p=PERSONAS[dial.value];level=+dial.value;dialName.textContent=p.name;dialSub.textContent=p.sub;
+  document.documentElement.style.setProperty("--accent",p.accent);
+  document.documentElement.style.setProperty("--accent-wash",p.accent+"18");}
+dial.addEventListener("input",setDial);setDial();
+
+// ---------- manuscript input ----------
+const words=t=>(t.match(/\b[\w'-]+\b/g)||[]).length;
+function onChange(){manuscript=msEl.value.trim();const n=words(manuscript);
+  countEl.textContent=manuscript.length<60?(n+" words — add a document to begin"):(n+" words ready"+(manuscript.length>CAP?" (first ~"+Math.round(CAP/6)+" used as context)":""));
+  updateSend();}
+msEl.addEventListener("input",onChange);
+$("example").addEventListener("change",e=>{if(EXAMPLES[e.target.value]){msEl.value=EXAMPLES[e.target.value];onChange();}e.target.value="";});
+$("filebtn").addEventListener("click",()=>$("file").click());
+$("file").addEventListener("change",async e=>{const f=e.target.files[0];if(!f)return;$("status").textContent="Reading "+f.name+"…";
+  try{let t="";const n=f.name.toLowerCase();
+    if(n.endsWith(".pdf"))t=await readPdf(f);else if(n.endsWith(".docx"))t=await readDocx(f);else t=await f.text();
+    msEl.value=t.trim();onChange();$("status").textContent=f.name+" · "+words(manuscript)+" words";
+  }catch(_){$("status").textContent="Couldn't read that file — paste the text instead.";}});
+async function readPdf(f){if(!window.pdfjsLib)throw 0;const b=await f.arrayBuffer();const pdf=await pdfjsLib.getDocument({data:b}).promise;let o="";
+  for(let i=1;i<=pdf.numPages;i++){const pg=await pdf.getPage(i);const c=await pg.getTextContent();o+=c.items.map(x=>x.str).join(" ")+"\n";}return o;}
+async function readDocx(f){if(!window.mammoth)throw 0;const b=await f.arrayBuffer();return (await mammoth.extractRawText({arrayBuffer:b})).value;}
+
+// ---------- API ----------
+async function callClaude(body){
+  const keyEl=$("apikey"),key=keyEl?keyEl.value.trim():"";
+  const usingKey=key.length>10;
+  const headers=usingKey?{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"}:{"Content-Type":"application/json"};
+  const model=usingKey?($("model")?$("model").value:"claude-sonnet-5"):MODEL;
+  const req=fetch(API_URL,{method:"POST",headers,body:JSON.stringify({model,max_tokens:8000,...body})});
+  const timeout=new Promise((_,rej)=>setTimeout(()=>rej(new Error("__timeout__")),90000));
+  let res;
+  try{res=await Promise.race([req,timeout]);}
+  catch(e){throw new Error((e&&e.message==="__timeout__")?"That took too long — try a shorter passage or ask again.":"Couldn't reach the model. Run this inside Claude, or add your own API key for public use.");}
+  if(!res.ok){
+    if(res.status===429)throw new Error("Claude usage limit reached for now — not a bug, just a short rolling limit. Wait for it to reset (your weekly limit is fine) and continue.");
+    if(res.status===401)throw new Error("That API key was rejected — check it in the settings at the top.");
+    let m="";try{const j=await res.json();m=(j.error&&j.error.message)||"";}catch(_){}
+    throw new Error("The model call failed ("+res.status+")."+(m?" "+m:" Try again."));}
+  let txt="";try{txt=await res.text();}catch(_){throw new Error("No response — try again.");}
+  try{return JSON.parse(txt);}catch(_){throw new Error("Got an unexpected response — try again.");}}
+const textOf=d=>(d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("\n").trim();
+
+// ---------- markdown ----------
+const esc=s=>(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function md2html(md){const inl=s=>esc(s).replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/(?<!\*)\*(?!\*)(.+?)\*(?!\*)/g,"<em>$1</em>");
+  const lines=(md||"").split("\n");let h="",list="",head="";
+  const close=()=>{if(list){h+="</"+list+">";list="";}};
+  for(const ln of lines){const t=ln.trim();if(!t){close();continue;}
+    if(/^###\s+/.test(t)){close();h+="<h4>"+inl(t.replace(/^###\s+/,""))+"</h4>";}
+    else if(/^##\s+/.test(t)){close();head=t.replace(/^##\s+/,"");h+="<h3>"+inl(head)+"</h3>";}
+    else if(/^#\s+/.test(t)){close();h+="<h3>"+inl(t.replace(/^#\s+/,""))+"</h3>";}
+    else if(/^\d+[.)]\s+/.test(t)){if(list!=="ol"){close();h+="<ol>";list="ol";}h+="<li>"+inl(t.replace(/^\d+[.)]\s+/,""))+"</li>";}
+    else if(/^[-*]\s+/.test(t)){if(list!=="ul"){close();h+="<ul>";list="ul";}h+="<li>"+inl(t.replace(/^[-*]\s+/,""))+"</li>";}
+    else{close();h+="<p>"+inl(t)+"</p>";}}
+  close();return h;}
+
+// ---------- chat ----------
+function systemPrompt(usePM){
+  const p=PERSONAS[level];
+  const hasMs=manuscript.length>=60;
+  const src=manuscript.length>CAP?manuscript.slice(0,CAP):manuscript;
+  let s=p.voice+" You are acting as an expert AI peer-review agent in an ongoing conversation about a manuscript. Write like a real, experienced reviewer would: natural, professional prose, specific to the text, first person where it fits ('I found…', 'I would ask the authors to…'). Build on the earlier conversation rather than repeating yourself. Use brief markdown headings or numbered points only when they genuinely help. Answer directly and completely — do not narrate your process or announce what you are about to look up, and when asked for a specific number of comments (e.g. 6 major and 6 minor), deliver all of them plus the requested decision. Never invent references, data, citations, or results, and say so when something can't be assessed.";
+  const isG=docType==="grant";
+  if(isG) s=p.voice+" You are acting as an expert grant reviewer (study-section style) in an ongoing conversation about a grant proposal. Review it as a funding panel would: weigh Significance, Investigator(s), Innovation, Approach, and Environment (NIH-style), or Intellectual Merit and Broader Impacts (NSF-style), as appropriate. Scrutinize the Specific Aims (hypothesis-driven, feasible, non-overlapping?), preliminary data, rigor and reproducibility, feasibility and risk, and whether scope and budget are justified. Give an overall assessment and, where it fits, a priority/impact impression with justification. Write like a real, experienced reviewer: natural professional prose, specific, first person where it fits. Build on the conversation. Answer directly and completely; when asked for a set number of strengths and weaknesses, deliver them all plus an overall recommendation. Never invent references, data, or results, and say so when something can't be assessed.";
+  const venue=($("journal")&&$("journal").value.trim())||"";
+  if(venue&&isG) s+=" Calibrate to the review criteria and expectations of "+venue+", as you understand them; do not fabricate specific program-announcement text.";
+  else if(venue) s+=" Calibrate this review to the standards of "+venue+". Judge scope fit, the novelty/significance bar, methodological rigor, and reporting expectations appropriate to that venue, and frame your editorial recommendation to that journal's typical decision thresholds. Where relevant, reference applicable reporting guidelines (e.g. CONSORT, STROBE, ARRIVE, MIQE). Base this on that journal's general reputation and scope as you understand it; do not fabricate specific author-guideline text.";
+  if(usePM) s+=" You have connected PubMed and bioRxiv tools. Use them to: (a) retrieve a paper the user identifies by PMID, DOI, title, or URL and then review what you can retrieve; and (b) check the manuscript's key claims against the published literature, citing real PMIDs. If a tool returns nothing or is unavailable, say so plainly and continue from the text — never fabricate a lookup result. Note that PubMed usually provides abstracts and metadata, not full text.";
+  if(hasMs) s+="\n\n=== "+(isG?"PROPOSAL":"MANUSCRIPT")+" UNDER REVIEW ===\n"+src;
+  else if(usePM) s+="\n\nNo manuscript has been pasted. If the user names a paper (PMID/DOI/title/URL), fetch it with the tools and review what you can retrieve (usually the abstract).";
+  else s+="\n\nNo manuscript has been pasted yet.";
+  return s;
+}
+const MCP_SERVERS=MCP;
+async function ask(messages){
+  const usePM=$("usepubmed")&&$("usepubmed").checked;
+  const base={system:systemPrompt(usePM),messages};
+  try{return await callClaude(usePM?{...base,mcp_servers:MCP_SERVERS}:base);}
+  catch(e){
+    if(usePM && !/usage limit|was rejected/i.test(e.message||"")){const d=await callClaude(base);d.__fallback=true;return d;}
+    throw e;
+  }
+}
+const STARTERS=["Write a full peer review","What are the top 3 things to fix first?","Check my claims against PubMed","Is the main claim supported by the data?","Draft an editor's decision letter"];
+const STARTERS_GRANT=["Review this proposal for a study section","Score Significance, Innovation and Approach","Are the Specific Aims fundable?","What's the biggest risk to feasibility?","Give an overall summary and recommendation"];
+const FUNNY=["Roast this paper like Reviewer 2 on a bad day","Review it as if it rejected your grant","Insist I cite three more (suspiciously specific) papers","Reject it in one devastating sentence","Praise it warmly \u2014 then demolish it"];
+function safeName(t){return (t||"peer-review").replace(/[^\w]+/g,"_").replace(/^_+|_+$/g,"").slice(0,60)||"peer-review";}
+function triggerDownload(blob,filename){try{const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1500);return true;}catch(_){return false;}}
+function wordExport(md,title){const body='<div style="font-family:Georgia,serif;font-size:12pt;line-height:1.5">'+md2html(md)+"</div>";
+  const html="<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>"+esc(title)+"</title></head><body>"+body+"</body></html>";
+  return triggerDownload(new Blob(['\ufeff'+html],{type:"application/msword"}),safeName(title)+".doc");}
+function pdfExport(md,title){const JS=(window.jspdf&&window.jspdf.jsPDF)||window.jsPDF||(window.jspdf&&window.jspdf.default);if(!JS)return false;
+  let doc;try{doc=new JS({unit:"pt",format:"letter"});}catch(_){return false;}
+  const M=56,W=doc.internal.pageSize.getWidth()-M*2,B=doc.internal.pageSize.getHeight()-M;let y=M;
+  doc.setFont("times","bold");doc.setFontSize(15);doc.text(title,M,y);y+=24;
+  md.split("\n").forEach(raw=>{const t=raw.trim();if(!t){y+=6;return;}
+    const isH=/^#{1,6}\s/.test(t);const txt=t.replace(/^#{1,6}\s*/,"").replace(/\*\*/g,"").replace(/^[-*]\s+/,"\u2022 ");
+    doc.setFont("times",isH?"bold":"normal");doc.setFontSize(isH?12.5:11);
+    doc.splitTextToSize(txt,W).forEach(line=>{if(y>B){doc.addPage();y=M;}doc.text(line,M,y);y+=isH?17:15.5;});
+    if(isH)y+=2;});
+  try{return triggerDownload(doc.output("blob"),safeName(title)+".pdf");}catch(_){return false;}}
+function lastReview(){for(let i=history.length-1;i>=0;i--){if(history[i].role==="assistant"&&!history[i].error)return history[i].content;}return null;}
+function wantsExport(t){const dl=/\b(download|save|export|give me|make me)\b/i.test(t)||/\bas (a |an )?(pdf|word|docx)\b/i.test(t);const fmt=/\b(pdf|docx|word)\b/i.test(t);return dl&&fmt;}
+function renderChat(typing){
+  if(!history.length&&!typing){
+    chat.innerHTML='<div class="empty">'+
+      '<div class="howto"><div class="howto-h">How to use it</div><ol>'+
+        '<li>Paste your manuscript on the left, or upload a PDF / Word file.</li>'+
+        '<li>Set the tone dial, and a target journal if you have one.</li>'+
+        '<li>Ask for a review \u2014 then follow up; it remembers the conversation.</li>'+
+        '<li>Export any reply with the PDF / Word buttons, or type \'download as PDF\'.</li>'+
+      '</ol></div>'+
+      '<div class="stgroup"><div class="stlab">Try</div><div class="starters">'+(docType==="grant"?STARTERS_GRANT:STARTERS).map(s=>'<button class="chip" data-q="'+esc(s)+'">'+esc(s)+"</button>").join("")+'</div></div>'+
+      '<div class="stgroup"><div class="stlab">Just for fun</div><div class="starters funny">'+FUNNY.map(s=>'<button class="chip" data-q="'+esc(s)+'">'+esc(s)+"</button>").join("")+'</div></div>'+
+    '</div>';
+    chat.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{if(!busy){msg.value=c.dataset.q;send();}});
+    return;
+  }
+  let h=history.map((m,i)=>{
+    if(m.role==="user")return '<div class="bubble user">'+esc(m.content)+"</div>";
+    if(m.error)return '<div class="bubble asst err">'+esc(m.content)+"</div>";
+    return '<div class="bubble asst"><div class="review">'+md2html(m.content)+'</div><div class="msgtools"><button class="dl" data-i="'+i+'" data-t="pdf">PDF</button><button class="dl" data-i="'+i+'" data-t="word">Word</button><button class="dl" data-i="'+i+'" data-t="copy">Copy</button></div></div>';
+  }).join("");
+  if(typing)h+='<div class="bubble asst"><div class="loading"><span class="spin"></span>Reviewing…</div></div>';
+  chat.innerHTML=h;chat.scrollTop=chat.scrollHeight;
+  chat.querySelectorAll(".dl").forEach(b=>b.onclick=()=>{const m=history[+b.dataset.i];if(!m)return;const t=b.dataset.t;const o=b.textContent;
+    if(t==="copy"){navigator.clipboard.writeText(m.content);b.textContent="Copied";setTimeout(()=>b.textContent=o,1200);return;}
+    const ok=(t==="pdf")?pdfExport(m.content,"Peer review"):wordExport(m.content,"Peer review");
+    b.textContent=ok?"Saved":"blocked here";setTimeout(()=>b.textContent=o,1600);});
+}
+async function send(){
+  if(busy)return;
+  const text=msg.value.trim();
+  if(!text)return;
+  if(wantsExport(text)){
+    history.push({role:"user",content:text});msg.value="";autoGrow();
+    const md=lastReview();
+    if(!md){history.push({role:"assistant",content:"Ask me for a review first — then I can export it as PDF or Word.",error:true});renderChat(false);updateSend();return;}
+    const wantPdf=/\bpdf\b/i.test(text),wantWord=/\b(word|docx)\b/i.test(text);
+    const doPdf=wantPdf||(!wantPdf&&!wantWord),doWord=wantWord;const done=[];
+    if(doPdf)done.push(pdfExport(md,"Peer review")?"PDF":"PDF (unavailable)");
+    if(doWord)done.push(wordExport(md,"Peer review")?"Word":"Word (unavailable)");
+    history.push({role:"assistant",content:"Exported the latest review as "+done.join(" and ")+". If nothing downloaded, the in-app sandbox may be blocking file saves — use the **PDF** / **Word** buttons under any review, or run this as a downloaded / hosted page, where downloads always work."});
+    renderChat(false);updateSend();return;
+  }
+  const pmOn=$("usepubmed")&&$("usepubmed").checked;
+  if(manuscript.length<60&&!pmOn){renderChat(false);chat.innerHTML+='<div class="bubble asst err">Add a manuscript on the left, or turn on PubMed lookup and give me a PMID / DOI / title to review.</div>';return;}
+  busy=true;updateSend();
+  history.push({role:"user",content:text});
+  msg.value="";autoGrow();
+  renderChat(true);
+  try{
+    const d=await ask(history.filter(m=>!m.error).slice(-HIST).map(m=>({role:m.role,content:m.content})));
+    let reply=textOf(d)||"(No reply came back — please ask again.)";
+    if(d.stop_reason==="max_tokens")reply+="\n\n*(This ran long and was cut off here — type \"continue\" and I'll finish it.)*";
+    if(d.__fallback)reply="*(PubMed/bioRxiv lookup wasn't available this time — reviewing from the manuscript text only.)*\n\n"+reply;
+    history.push({role:"assistant",content:reply});
+  }catch(e){history.push({role:"assistant",content:e.message,error:true});}
+  busy=false;updateSend();renderChat(false);
+}
+function updateSend(){const pmOn=$("usepubmed")&&$("usepubmed").checked;sendBtn.disabled=busy||!msg.value.trim()||(manuscript.length<60&&!pmOn);}
+function autoGrow(){msg.style.height="auto";msg.style.height=Math.min(msg.scrollHeight,160)+"px";}
+msg.addEventListener("input",()=>{autoGrow();updateSend();});
+msg.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
+sendBtn.addEventListener("click",send);
+if($("usepubmed"))$("usepubmed").addEventListener("change",updateSend);
+$("clear").addEventListener("click",()=>{history=[];renderChat(false);});
+
+// ---------- optional key persistence ----------
+(function(){const keyEl=$("apikey"),modelEl=$("model"),dot=$("keydot"),label=$("keylabel");
+  try{keyEl.value=localStorage.getItem("r2_key")||"";}catch(_){}
+  try{const mm=localStorage.getItem("r2_model");if(mm&&modelEl)modelEl.value=mm;}catch(_){}
+  function refl(){const has=keyEl.value.trim().length>10;dot.classList.toggle("on",has);label.textContent=has?"Using your API key (works on public sites too)":"Running on Claude (no key needed) — click to add a key for public use";}
+  keyEl.addEventListener("input",()=>{try{localStorage.setItem("r2_key",keyEl.value.trim());}catch(_){}refl();});
+  if(modelEl)modelEl.addEventListener("change",()=>{try{localStorage.setItem("r2_model",modelEl.value);}catch(_){}});
+  refl();})();
+
+const help=$("help");
+$("helpbtn").addEventListener("click",()=>{help.hidden=false;});
+$("helpx").addEventListener("click",()=>{help.hidden=true;});
+help.addEventListener("click",e=>{if(e.target===help)help.hidden=true;});
+let docType="manuscript";
+const JOURNAL_CHIPS=[["High-impact","a high-impact general-science journal at the Nature / Science / Cell tier, where novelty and broad significance are decisive"],["Specialist","a strong specialist journal in this field, where technical rigor and a solid advance matter more than broad reach"],["Methods","a methods / bioinformatics journal (e.g. Bioinformatics, Genome Biology), where reproducibility, benchmarking and code/data availability are decisive"],["Clinical","a clinical journal (e.g. JAMA, The Lancet) with strict reporting standards and emphasis on clinical relevance and statistics"],["Megajournal","a soundness-only megajournal (e.g. PLOS ONE, Scientific Reports) that judges technical validity and rigor, NOT novelty or impact"]];
+const FUNDER_CHIPS=[["NIH R01","an NIH R01, scored on Significance, Investigator(s), Innovation, Approach, and Environment with an overall impact score"],["NIH R21","an NIH R21 exploratory grant, where an innovative, feasible high-risk idea matters more than extensive preliminary data"],["NIH F/K","an NIH fellowship or career award, where the candidate's training plan and trajectory weigh as heavily as the science"],["NSF","an NSF proposal, judged on Intellectual Merit and Broader Impacts"],["Foundation","a private foundation grant, judged on mission fit, impact, and feasibility"]];
+function renderVenue(){const isG=docType==="grant";
+  const vl=$("venueLabel");if(vl)vl.textContent=isG?"Target funder / mechanism (optional)":"Target journal (optional)";
+  const inp=$("journal");if(inp)inp.placeholder=isG?"e.g. NIH R01, NSF, ERC, Gates Foundation":"e.g. Nature Neuroscience, Bioinformatics, PLOS ONE";
+  const box=$("jchips");if(box){box.innerHTML=(isG?FUNDER_CHIPS:JOURNAL_CHIPS).map(c=>'<button class="chip jchip" data-j="'+esc(c[1])+'">'+esc(c[0])+"</button>").join("");
+    box.querySelectorAll(".jchip").forEach(c=>c.onclick=()=>{if(inp)inp.value=c.dataset.j;});}}
+document.querySelectorAll(".dt").forEach(b=>b.onclick=()=>{docType=b.dataset.d;
+  document.querySelectorAll(".dt").forEach(x=>x.classList.toggle("active",x===b));
+  const t=$("msTitle");if(t)t.textContent=docType==="grant"?"The proposal":"The manuscript";
+  if($("journal"))$("journal").value="";
+  renderVenue();renderChat(false);});
+renderVenue();
+renderChat(false);
+onChange();
+</script>
+</body>
+</html>
