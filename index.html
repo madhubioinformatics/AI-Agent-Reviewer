@@ -206,7 +206,7 @@
     <section class="panel chatpanel">
       <div class="chathead"><h2>The review</h2><div style="display:flex;gap:8px"><button class="clearbtn" id="helpbtn">How to use</button><button class="clearbtn" id="clear">New review</button></div></div>
       <div id="chat"></div>
-      <label class="pmtoggle"><input type="checkbox" id="usepubmed" checked /> Look up PubMed &amp; bioRxiv <span class="hint">— uses your connectors; works inside Claude</span></label>
+      <label class="pmtoggle"><input type="checkbox" id="usepubmed" /> Check the literature <span class="hint">— web search; verifies claims &amp; cites sources (adds a little time &amp; cost)</span></label>
       <div class="inputrow">
         <textarea id="msg" placeholder="Ask Reviewer #2 anything… (Enter to send, Shift+Enter for a new line)"></textarea>
         <button class="send" id="send" disabled>Send</button>
@@ -223,7 +223,7 @@
         <li><strong>Set the tone.</strong> The dial runs from Kind mentor to Reviewer #2 from hell — the interface heats up as you raise it.</li>
         <li><strong>Pick a target journal (optional).</strong> It recalibrates the bar: a "major revision" for a specialist journal can be a "reject" for a flagship.</li>
         <li><strong>Just talk.</strong> Ask for a full review, the top fixes, a decision letter — anything. It remembers the conversation, so follow up ("now be harsher", "expand point 3").</li>
-        <li><strong>Look up the literature (optional).</strong> With PubMed / bioRxiv on, give it a PMID / DOI / title to fetch and review, or ask it to check your claims.</li>
+        <li><strong>Check the literature (optional).</strong> Turn on "Check the literature" and it verifies key claims against published work (PubMed, bioRxiv, journals) via web search and cites sources.</li>
         <li><strong>Export.</strong> Use the PDF / Word / Copy buttons under any reply, or type "download as PDF and Word".</li>
       </ol>
       <p class="tip">Grounded in the text you give it — it won't invent references. Reviews are assistive, not a substitute for real peer review.</p>
@@ -335,7 +335,7 @@ function systemPrompt(usePM){
   const venue=($("journal")&&$("journal").value.trim())||"";
   if(venue&&isG) s+=" Calibrate to the review criteria and expectations of "+venue+", as you understand them; do not fabricate specific program-announcement text.";
   else if(venue) s+=" Calibrate this review to the standards of "+venue+". Judge scope fit, the novelty/significance bar, methodological rigor, and reporting expectations appropriate to that venue, and frame your editorial recommendation to that journal's typical decision thresholds. Where relevant, reference applicable reporting guidelines (e.g. CONSORT, STROBE, ARRIVE, MIQE). Base this on that journal's general reputation and scope as you understand it; do not fabricate specific author-guideline text.";
-  if(usePM) s+=" You have connected PubMed and bioRxiv tools. Use them to: (a) retrieve a paper the user identifies by PMID, DOI, title, or URL and then review what you can retrieve; and (b) check the manuscript's key claims against the published literature, citing real PMIDs. If a tool returns nothing or is unavailable, say so plainly and continue from the text — never fabricate a lookup result. Note that PubMed usually provides abstracts and metadata, not full text.";
+  if(usePM) s+=" You have a web search tool. Use it to check the manuscript's key claims against the current published literature — prefer PubMed, bioRxiv, and peer-reviewed sources — and to surface directly relevant prior work, citing specific papers (authors, year, and PMID or DOI when available). If the user names a paper by PMID, DOI, title, or URL, search for it and review what you find. If a search returns nothing useful or the tool is unavailable, say so plainly and continue from the text — never fabricate a source.";
   if(hasMs) s+="\n\n=== "+(isG?"PROPOSAL":"MANUSCRIPT")+" UNDER REVIEW ===\n"+src;
   else if(usePM) s+="\n\nNo manuscript has been pasted. If the user names a paper (PMID/DOI/title/URL), fetch it with the tools and review what you can retrieve (usually the abstract).";
   else s+="\n\nNo manuscript has been pasted yet.";
@@ -345,7 +345,8 @@ const MCP_SERVERS=MCP;
 async function ask(messages){
   const usePM=$("usepubmed")&&$("usepubmed").checked;
   const base={system:systemPrompt(usePM),messages};
-  try{return await callClaude(usePM?{...base,mcp_servers:MCP_SERVERS}:base);}
+  const withTool=usePM?{...base,tools:[{type:"web_search_20250305",name:"web_search",max_uses:5}]}:base;
+  try{return await callClaude(withTool);}
   catch(e){
     if(usePM && !/usage limit|was rejected/i.test(e.message||"")){const d=await callClaude(base);d.__fallback=true;return d;}
     throw e;
@@ -463,7 +464,6 @@ document.querySelectorAll(".dt").forEach(b=>b.onclick=()=>{docType=b.dataset.d;
   if($("journal"))$("journal").value="";
   renderVenue();renderChat(false);});
 renderVenue();
-if(PROXY_URL){var _pt=document.querySelector(".pmtoggle");if(_pt)_pt.style.display="none";var _pm=$("usepubmed");if(_pm)_pm.checked=false;}
 renderChat(false);
 onChange();
 </script>
